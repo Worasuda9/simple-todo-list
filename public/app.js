@@ -10,6 +10,7 @@ const completedCount = document.getElementById('completedCount');
 
 // State
 let todos = [];
+let editingId = null;
 
 // Fetch all todos
 async function fetchTodos() {
@@ -110,13 +111,72 @@ function renderTodos() {
                     ${todo.completed ? 'checked' : ''} 
                     onchange="toggleTodo(${todo.id})"
                 />
-                <span class="todo-text">${escapeHtml(todo.text)}</span>
-                <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
+                ${editingId === todo.id ? `
+                    <input id="editInput-${todo.id}" class="edit-input" value="${escapeHtml(todo.text)}" />
+                    <button class="save-btn" onclick="saveEdit(${todo.id})">Save</button>
+                    <button class="cancel-btn" onclick="cancelEdit()">Cancel</button>
+                ` : `
+                    <span class="todo-text">${escapeHtml(todo.text)}</span>
+                    <button class="edit-btn" onclick="startEdit(${todo.id})">Edit</button>
+                    <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
+                `}
             </div>
         `).join('');
     }
     
     updateStats();
+}
+
+// Start editing a todo
+function startEdit(id) {
+    editingId = id;
+    renderTodos();
+    const input = document.getElementById(`editInput-${id}`);
+    if (input) input.focus();
+}
+
+// Cancel editing
+function cancelEdit() {
+    editingId = null;
+    renderTodos();
+}
+
+// Save edited todo text
+async function saveEdit(id) {
+    const input = document.getElementById(`editInput-${id}`);
+    if (!input) return;
+
+    const newText = input.value.trim();
+    if (!newText) {
+        alert('Please enter a todo');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text: newText }),
+        });
+
+        if (response.ok) {
+            const updated = await response.json();
+            const index = todos.findIndex(t => t.id === id);
+            if (index !== -1) {
+                todos[index] = updated;
+            }
+            editingId = null;
+            renderTodos();
+        } else {
+            const err = await response.json();
+            alert(err.error || 'Failed to update todo');
+        }
+    } catch (error) {
+        console.error('Error saving todo:', error);
+        alert('Failed to update todo');
+    }
 }
 
 // Update statistics

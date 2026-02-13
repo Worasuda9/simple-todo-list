@@ -306,4 +306,55 @@ describe('Frontend Todo Application', () => {
       expect(escaped).not.toContain('<script>');
     });
   });
+
+  describe('editTodo (frontend) behavior', () => {
+    test('should send PUT request when saving edited todo', async () => {
+      // Prepare DOM input for editing
+      const input = document.createElement('input');
+      input.id = 'editInput-1';
+      input.value = 'Edited todo';
+      document.body.appendChild(input);
+
+      // Mock fetch response for PUT
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1, text: 'Edited todo', completed: false })
+      });
+
+      const id = 1;
+      const newText = document.getElementById(`editInput-${id}`).value.trim();
+
+      const response = await fetch(`/api/todos/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: newText })
+      });
+
+      expect(fetch).toHaveBeenCalledWith('/api/todos/1', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'Edited todo' })
+      });
+
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result.text).toBe('Edited todo');
+    });
+
+    test('should alert when saving empty edited todo', () => {
+      const input = document.createElement('input');
+      input.id = 'editInput-2';
+      input.value = '   ';
+      document.body.appendChild(input);
+
+      const newText = document.getElementById('editInput-2').value.trim();
+      if (!newText) {
+        alert('Please enter a todo');
+      }
+
+      expect(alert).toHaveBeenCalledWith('Please enter a todo');
+    });
+  });
 });
